@@ -17,7 +17,6 @@ app.get("/", (req, res) => {
 app.post("/api/convert", async (req, res) => {
   const {
     url: targetUrl,
-    viewport,
     marginTop,
     marginRight,
     marginBottom,
@@ -47,10 +46,10 @@ app.post("/api/convert", async (req, res) => {
     });
     const page = await browser.newPage();
 
-    if (viewport) {
-      const viewportDimensions = JSON.parse(viewport);
+    
+      const viewportDimensions = {"width":1280,"height":800};
       await page.setViewport(viewportDimensions);
-    }
+    
 
     await page.goto(targetUrl, { waitUntil: "networkidle2", timeout: 60000 });
 
