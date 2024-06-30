@@ -1,6 +1,7 @@
 const express = require("express");
 const puppeteer = require("puppeteer");
 const url = require("url");
+const chromium = require("chrome-aws-lambda");
 
 const dotenv = require("dotenv");
 dotenv.config();
@@ -42,7 +43,9 @@ app.post("/api/convert", async (req, res) => {
 
   try {
     const browser = await puppeteer.launch({
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      args: [...chromium.args, "--no-sandbox", "--disable-setuid-sandbox"],
+      executablePath: await chromium.executablePath,
+      headless: chromium.headless,
     });
     const page = await browser.newPage();
 
