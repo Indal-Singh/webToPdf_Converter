@@ -3,16 +3,17 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "xvfb-run node index.js"
   },
-  "author": "Gautam Kumar",
+  "author": "Indal Singh",
   "license": "ISC",
   "description": "",
   "dependencies": {
     "axios": "^1.7.2",
-    "chrome-aws-lambda": "^10.1.0",
+    "chrome-aws-lambda": "^9.1.0",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
+    "pdf-lib": "^1.17.1",
     "pdfkit": "^0.15.0",
     "puppeteer": "^22.12.1"
   }
