@@ -230,12 +230,81 @@ const mergePdfBuffers = async (pdfBuffers) => {
     }
 
     const mergedPdfBuffer = await mergedPdf.save();
-    console.log(mergedPdfBuffer);
+    // console.log(mergedPdfBuffer);
     return Buffer.from(mergedPdfBuffer);
+};
+
+const imagesUrlToPdf = async (req, res) => {
+    try {
+        const { urls } = req.body;  // Assuming URLs are passed in the request body
+
+        if (!urls || urls.length === 0) {
+            return res.status(400).json({ error: "No URLs provided" });
+        }
+
+        const browser = await puppeteer.launch({
+            args: [...chromium.args, "--no-sandbox", "--disable-setuid-sandbox", '--font-render-hinting=none'],
+            executablePath: await chromium.executablePath,
+            headless: chromium.headless,
+        });
+        const mergedPdf = await PDFDocument.create();
+
+        for (const url of urls) {
+            const viewportDimensions = { "width": 1000, "height": 620 };
+            const page = await browser.newPage();
+            await page.setViewport(viewportDimensions);
+            await page.setJavaScriptEnabled(false);
+            await page.goto(url,  {waitUntil: "load", timeout: 3000000 });
+
+            // Take a screenshot of the web page
+            const screenshotBuffer = await page.screenshot();
+
+            // Load the screenshot as an image into the PDF
+            const image = await mergedPdf.embedPng(screenshotBuffer);
+            const { width, height } = image.scale(0.9);
+
+            // Create a new PDF page for the screenshot
+            const pdfPage = mergedPdf.addPage([width, height]);
+            pdfPage.drawImage(image, {
+                x: 0,
+                y: 0,
+                width,
+                height,
+            });
+
+            await page.close();
+        }
+
+        const mergedPdfBuffer = await mergedPdf.save();
+        await browser.close();
+
+        const hostname = "merged_file"; // You can set this dynamically based on URL or req data
+
+        // Return the response in the specified format
+        const response = {
+            ConversionCost: 1,
+            Files: [
+                {
+                    FileName: `${hostname}.pdf`,
+                    FileExt: "pdf",
+                    FileSize: mergedPdfBuffer.length,
+                    FileData: Buffer.from(mergedPdfBuffer).toString("base64"),
+                },
+            ],
+        };
+
+        // Send response to the client
+        res.json(response);
+
+    } catch (error) {
+        console.error("Error in imagesUrlToPdf:", error);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
 };
 
 
 module.exports = {
     webtopdf,
-    webToPdfMerge
+    webToPdfMerge,
+    imagesUrlToPdf
 }
