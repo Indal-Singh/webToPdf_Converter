@@ -17,7 +17,7 @@ const webtopdf = async (req, res) => {
     if (!targetUrl) {
         return res.status(400).json({ error: "URL is required" });
     }
-    
+
     let scaleValue;
     if (scale) {
         scaleValue = parseFloat(scale) / 100;
@@ -137,8 +137,8 @@ const webToPdfMerge = async (req, res) => {
         });
 
         const pdfOptions = {
-            width: '89mm',  // 3.5 inches
-            height: '51mm', // 2 inches
+            width: 252,
+            height: 180,
             printBackground: true,
             preferCSSPageSize: true,
             landscape: true,
@@ -156,20 +156,27 @@ const webToPdfMerge = async (req, res) => {
             await page.addStyleTag({
                 url: 'https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari&family=Noto+Sans+Bengali&family=Noto+Sans+Tamil&display=swap'
             });
-            
+
             await page.addStyleTag({
                 content: `
-                    body {
-                        margin: 0 !important;
-                        padding: 0 !important;
-                        overflow: hidden !important; /* Prevent scrolling */
-                    }
-                    * {
-                        box-sizing: border-box;
-                    }
+                     @page {
+            size: 3.5in 2.5in; /* Width height for landscape RC card */
+            margin: 0; /* No margins */
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden; /* Prevent scrolling */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+            background: white; /* Optional background color */
+        } 
                 `,
             });
-        
+
 
             const viewportDimensions = { "width": 800, "height": 600 };
             await page.setViewport(viewportDimensions);
