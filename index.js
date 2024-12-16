@@ -1,5 +1,5 @@
 const express = require("express");
-const { webtopdf,webToPdfMerge,imagesUrlToPdf } = require('./controller/pdfController');
+const { webtopdf,webToPdfMerge,imagesUrlToPdf,imagesUrlToPdfPortration } = require('./controller/pdfController');
 
 const dotenv = require("dotenv");
 dotenv.config();
@@ -16,6 +16,7 @@ app.get("/", (req, res) => {
 app.post("/api/convert/webtopdf", webtopdf);
 app.post("/api/convert/webtopdfmerge", webToPdfMerge);
 app.post("/api/convert/convert-images-to-pdf", imagesUrlToPdf);
+app.post("/api/convert/convert-images-to-pdf-og", imagesUrlToPdfPortration);
 
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);

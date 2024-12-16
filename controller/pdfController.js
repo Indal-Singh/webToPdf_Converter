@@ -302,9 +302,104 @@ const imagesUrlToPdf = async (req, res) => {
     }
 };
 
+const imagesUrlToPdfPortration = async (req, res) => {
+    try {
+        const { urls } = req.body; // Assuming URLs are passed in the request body
+
+        if (!urls || urls.length === 0) {
+            return res.status(400).json({ error: "No URLs provided" });
+        }
+
+        const browser = await puppeteer.launch({
+            args: [...chromium.args, "--no-sandbox", "--disable-setuid-sandbox", '--font-render-hinting=none'],
+            executablePath: await chromium.executablePath,
+            headless: chromium.headless,
+        });
+
+        const mergedPdf = await PDFDocument.create();
+
+        for (const url of urls) {
+            const page = await browser.newPage();
+            await page.setJavaScriptEnabled(false); // Disable JS if not needed
+            await page.goto(url, { waitUntil: "load", timeout: 3000000 });
+
+            // Get the dimensions of the page's content
+            const contentDimensions = await page.evaluate(() => {
+                const body = document.body;
+                const html = document.documentElement;
+
+                const width = Math.max(
+                    body.scrollWidth,
+                    body.offsetWidth,
+                    html.clientWidth,
+                    html.scrollWidth,
+                    html.offsetWidth
+                );
+
+                const height = Math.max(
+                    body.scrollHeight,
+                    body.offsetHeight,
+                    html.clientHeight,
+                    html.scrollHeight,
+                    html.offsetHeight
+                );
+
+                return { width, height };
+            });
+
+            // Convert dimensions from pixels to points (1 px = 0.75 pt)
+            const pointWidth = contentDimensions.width * 0.75;
+            const pointHeight = contentDimensions.height * 0.75;
+
+            // Generate a single-page PDF with precise content dimensions
+            const pagePdfBuffer = await page.pdf({
+                width: `${contentDimensions.width}px`,
+                height: `${contentDimensions.height}px`,
+                printBackground: true, // Print background colors and images
+                preferCSSPageSize: false,
+                margin: { top: 0, bottom: 0, left: 0, right: 0 }, // Ensure no extra blank margins
+                pageRanges: '1', // Limit output to the first page
+            });
+
+            // Embed the single PDF page into the merged PDF
+            const singlePdfDoc = await PDFDocument.load(pagePdfBuffer);
+            const pages = await mergedPdf.copyPages(singlePdfDoc, singlePdfDoc.getPageIndices());
+            for (const p of pages) mergedPdf.addPage(p);
+
+            await page.close();
+        }
+
+        const mergedPdfBuffer = await mergedPdf.save();
+        await browser.close();
+
+        const hostname = "merged_file"; // Dynamic filename if required
+
+        // Prepare response object
+        const response = {
+            ConversionCost: 1,
+            Files: [
+                {
+                    FileName: `${hostname}.pdf`,
+                    FileExt: "pdf",
+                    FileSize: mergedPdfBuffer.length,
+                    FileData: Buffer.from(mergedPdfBuffer).toString("base64"),
+                },
+            ],
+        };
+
+        // Send response to the client
+        res.json(response);
+
+    } catch (error) {
+        console.error("Error in imagesUrlToPdf:", error);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+};
+
 
 module.exports = {
     webtopdf,
     webToPdfMerge,
-    imagesUrlToPdf
+    imagesUrlToPdf,
+    imagesUrlToPdfPortration
 }
