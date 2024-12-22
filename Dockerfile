@@ -1,35 +1,26 @@
-# Step 1: Use a lightweight Node.js base image
-FROM node:18-bullseye
+# Use the official Node.js image as a base
+FROM node:20-slim
 
-# Step 2: Set the working directory
+# Set the working directory in the container
 WORKDIR /app
 
-# Step 3: Copy package.json and package-lock.json (if available)
+# Copy only the package.json and package-lock.json to leverage Docker cache
 COPY package*.json ./
 
-# Step 4: Install required OS-level dependencies for Puppeteer
-RUN apt-get update && \
-    apt-get install -y \
-      wget \
-      ca-certificates \
-      fonts-liberation \
-      libasound2 \
-      libatk1.0-0 \
-      libcups2 \
-      libnss3 \
-      libxss1 \
-      xauth \
-      xvfb && \
-    rm -rf /var/lib/apt/lists/*
+# Install dependencies and Playwright browsers
+RUN npm install 
+# browser Installations
+RUN npx playwright install
+RUN npx playwright install-deps
 
-# Step 5: Install Node.js dependencies
-RUN npm install
-
-# Step 6: Copy the application source code
+# Copy the rest of the application code
 COPY . .
 
-# Step 7: Expose the port your app runs on
+# Create the .env file with the PORT variable
+RUN echo "PORT=3002" > .env
+
+# Expose the port set in the environment variable
 EXPOSE 3002
 
-# Step 8: Define the command to start the app
-CMD ["xvfb-run", "node", "index.js"]
+# Command to start the application
+CMD ["npm", "start"]
