@@ -264,8 +264,6 @@ const imagesUrlToPdfPortration = async (req, res) => {
     try {
         const { urls } = req.body;
 
-        console.log(urls);  // Debugging
-
         if (!urls || urls.length === 0) {
             return res.status(400).json({ error: "No URLs provided" });
         }
