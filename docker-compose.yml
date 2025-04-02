@@ -1,0 +1,5 @@
+services:
+  webtopdf:
+    build: .
+    mem_limit: 2g
+    cpus: 2
