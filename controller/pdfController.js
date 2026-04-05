@@ -1,7 +1,27 @@
 const puppeteer = require("puppeteer");
-const url = require("url");
-const chromium = require("chrome-aws-lambda");
 const { PDFDocument } = require('pdf-lib'); // Make sure to install pdf-lib
+
+const BROWSER_ARGS = [
+    "--no-sandbox",
+    "--disable-setuid-sandbox",
+    "--disable-dev-shm-usage",
+    "--disable-gpu",
+    "--disable-software-rasterizer",
+    "--font-render-hinting=none",
+    "--headless=new",
+];
+
+const launchBrowser = async () => {
+    return puppeteer.launch({
+        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || "/usr/bin/google-chrome-stable",
+        headless: true,
+        args: BROWSER_ARGS,
+    });
+};
+
+const isTimeoutError = (error) => {
+    return error instanceof puppeteer.TimeoutError || error?.name === "TimeoutError";
+};
 
 const webtopdf = async (req, res) => {
     const {
@@ -30,12 +50,10 @@ const webtopdf = async (req, res) => {
         scaleValue = 1.0; // Default scale
     }
 
+    let browser;
+
     try {
-        const browser = await puppeteer.launch({
-            args: [...chromium.args, "--no-sandbox", "--disable-setuid-sandbox", '--font-render-hinting=none'],
-            executablePath: await chromium.executablePath,
-            headless: chromium.headless,
-        });
+        browser = await launchBrowser();
 
         const page = await browser.newPage();
         await page.addStyleTag({
@@ -91,13 +109,17 @@ const webtopdf = async (req, res) => {
         console.error("Error generating PDF:", error);
 
         let errorMessage;
-        if (error instanceof puppeteer.errors.TimeoutError) {
+        if (isTimeoutError(error)) {
             errorMessage = "Failed to generate PDF: Page load timeout";
         } else {
             errorMessage = "Failed to generate PDF: " + error.message;
         }
 
         res.status(500).json({ error: errorMessage });
+    } finally {
+        if (browser) {
+            await browser.close().catch(() => { });
+        }
     }
 }
 
@@ -129,12 +151,10 @@ const webToPdfMerge = async (req, res) => {
 
     const pdfBuffers = [];
 
+    let browser;
+
     try {
-        const browser = await puppeteer.launch({
-            args: [...chromium.args, "--no-sandbox", "--disable-setuid-sandbox", '--font-render-hinting=none'],
-            executablePath: await chromium.executablePath,
-            headless: chromium.headless,
-        });
+        browser = await launchBrowser();
 
         const pdfOptions = {
             width: 252,
@@ -211,12 +231,16 @@ const webToPdfMerge = async (req, res) => {
     } catch (error) {
         console.error("Error generating PDF:", error);
         let errorMessage;
-        if (error instanceof puppeteer.errors.TimeoutError) {
+        if (isTimeoutError(error)) {
             errorMessage = "Failed to generate PDF: Page load timeout";
         } else {
             errorMessage = "Failed to generate PDF: " + error.message;
         }
         res.status(500).json({ error: errorMessage });
+    } finally {
+        if (browser) {
+            await browser.close().catch(() => { });
+        }
     }
 };
 
@@ -235,6 +259,8 @@ const mergePdfBuffers = async (pdfBuffers) => {
 };
 
 const imagesUrlToPdf = async (req, res) => {
+    let browser;
+
     try {
         const { urls } = req.body;  // Assuming URLs are passed in the request body
 
@@ -242,11 +268,7 @@ const imagesUrlToPdf = async (req, res) => {
             return res.status(400).json({ error: "No URLs provided" });
         }
 
-        const browser = await puppeteer.launch({
-            args: [...chromium.args, "--no-sandbox", "--disable-setuid-sandbox", '--font-render-hinting=none'],
-            executablePath: await chromium.executablePath,
-            headless: chromium.headless,
-        });
+        browser = await launchBrowser();
         const mergedPdf = await PDFDocument.create();
 
         for (const url of urls) {
@@ -298,11 +320,20 @@ const imagesUrlToPdf = async (req, res) => {
 
     } catch (error) {
         console.error("Error in imagesUrlToPdf:", error);
-        res.status(500).json({ error: "Internal Server Error" });
+        const errorMessage = isTimeoutError(error)
+            ? "Failed to generate PDF: Page load timeout"
+            : "Failed to generate PDF: " + error.message;
+        res.status(500).json({ error: errorMessage });
+    } finally {
+        if (browser) {
+            await browser.close().catch(() => { });
+        }
     }
 };
 
 const imagesUrlToPdfPortration = async (req, res) => {
+    let browser;
+
     try {
         const { urls } = req.body; // Assuming URLs are passed in the request body
 
@@ -310,11 +341,7 @@ const imagesUrlToPdfPortration = async (req, res) => {
             return res.status(400).json({ error: "No URLs provided" });
         }
 
-        const browser = await puppeteer.launch({
-            args: [...chromium.args, "--no-sandbox", "--disable-setuid-sandbox", '--font-render-hinting=none'],
-            executablePath: await chromium.executablePath,
-            headless: chromium.headless,
-        });
+        browser = await launchBrowser();
 
         const mergedPdf = await PDFDocument.create();
 
@@ -392,7 +419,14 @@ const imagesUrlToPdfPortration = async (req, res) => {
 
     } catch (error) {
         console.error("Error in imagesUrlToPdf:", error);
-        res.status(500).json({ error: "Internal Server Error" });
+        const errorMessage = isTimeoutError(error)
+            ? "Failed to generate PDF: Page load timeout"
+            : "Failed to generate PDF: " + error.message;
+        res.status(500).json({ error: errorMessage });
+    } finally {
+        if (browser) {
+            await browser.close().catch(() => { });
+        }
     }
 };
 

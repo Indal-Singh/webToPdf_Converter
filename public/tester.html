@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PDF Converter API Tester</title>
+  <style>
+    :root {
+      --bg: #f6efe5;
+      --surface: rgba(255, 252, 247, 0.92);
+      --surface-strong: #fffaf2;
+      --ink: #1f2937;
+      --muted: #5f6b7a;
+      --accent: #b45309;
+      --accent-dark: #7c2d12;
+      --line: rgba(124, 45, 18, 0.14);
+      --success: #166534;
+      --error: #b91c1c;
+      --shadow: 0 20px 45px rgba(124, 45, 18, 0.12);
+      --radius: 22px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(245, 158, 11, 0.22), transparent 34%),
+        radial-gradient(circle at top right, rgba(234, 88, 12, 0.18), transparent 28%),
+        linear-gradient(160deg, #fff8ee 0%, #f7efe5 52%, #efe4d2 100%);
+      min-height: 100vh;
+    }
+
+    .shell {
+      width: min(1260px, calc(100% - 32px));
+      margin: 32px auto;
+      display: grid;
+      grid-template-columns: minmax(340px, 420px) minmax(0, 1fr);
+      gap: 24px;
+      align-items: start;
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+    }
+
+    .controls {
+      padding: 24px;
+      position: sticky;
+      top: 20px;
+    }
+
+    .preview {
+      padding: 24px;
+      min-height: 80vh;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(2rem, 4vw, 3rem);
+      line-height: 0.96;
+      letter-spacing: -0.04em;
+      color: var(--accent-dark);
+    }
+
+    .subtitle {
+      margin: 0 0 18px;
+      color: var(--muted);
+      font-size: 0.98rem;
+      line-height: 1.5;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(180, 83, 9, 0.08);
+      color: var(--accent-dark);
+      font-size: 0.86rem;
+      margin-bottom: 16px;
+    }
+
+    .field {
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: block;
+      font-size: 0.9rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: var(--accent-dark);
+    }
+
+    input,
+    textarea,
+    select {
+      width: 100%;
+      border: 1px solid rgba(95, 107, 122, 0.28);
+      border-radius: 14px;
+      padding: 12px 14px;
+      font: inherit;
+      color: var(--ink);
+      background: var(--surface-strong);
+      transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+    }
+
+    input:focus,
+    textarea:focus,
+    select:focus {
+      outline: none;
+      border-color: rgba(180, 83, 9, 0.55);
+      box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.14);
+      transform: translateY(-1px);
+    }
+
+    textarea {
+      min-height: 112px;
+      resize: vertical;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+
+    button,
+    .link-button {
+      border: none;
+      border-radius: 999px;
+      padding: 12px 18px;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    button:hover,
+    .link-button:hover {
+      transform: translateY(-1px);
+    }
+
+    .primary {
+      background: linear-gradient(135deg, #d97706, #9a3412);
+      color: #fff;
+      box-shadow: 0 14px 26px rgba(154, 52, 18, 0.25);
+    }
+
+    .secondary {
+      background: rgba(255, 255, 255, 0.82);
+      color: var(--ink);
+      border: 1px solid var(--line);
+    }
+
+    .secondary[disabled],
+    .primary[disabled] {
+      opacity: 0.65;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .status {
+      min-height: 24px;
+      margin-top: 14px;
+      font-size: 0.94rem;
+      font-weight: 700;
+    }
+
+    .status.success {
+      color: var(--success);
+    }
+
+    .status.error {
+      color: var(--error);
+    }
+
+    .hint,
+    .meta {
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+
+    .meta-card {
+      margin-top: 18px;
+      padding: 14px 16px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.66);
+      border: 1px solid var(--line);
+    }
+
+    .meta-card strong {
+      color: var(--accent-dark);
+    }
+
+    .preview-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: start;
+      flex-wrap: wrap;
+      margin-bottom: 18px;
+    }
+
+    .preview-frame {
+      width: 100%;
+      height: min(78vh, 980px);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: #f1eadf;
+    }
+
+    .empty {
+      min-height: min(78vh, 980px);
+      border: 1px dashed rgba(124, 45, 18, 0.24);
+      border-radius: 20px;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 32px;
+      color: var(--muted);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.75), rgba(255,248,238,0.9)),
+        repeating-linear-gradient(
+          -45deg,
+          rgba(180, 83, 9, 0.03),
+          rgba(180, 83, 9, 0.03) 12px,
+          transparent 12px,
+          transparent 24px
+        );
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    code {
+      font-family: "Courier New", monospace;
+      font-size: 0.9em;
+    }
+
+    @media (max-width: 980px) {
+      .shell {
+        grid-template-columns: 1fr;
+      }
+
+      .controls {
+        position: static;
+      }
+
+      .preview-frame,
+      .empty {
+        min-height: 60vh;
+        height: 60vh;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <section class="panel controls">
+      <div class="badge">API Test Console</div>
+      <h1>PDF route tester</h1>
+      <p class="subtitle">Try every API endpoint from one page, preview the generated PDF, and download the result without leaving the browser.</p>
+
+      <form id="tester-form">
+        <div class="field">
+          <label for="base-url">API base URL</label>
+          <input id="base-url" name="baseUrl" type="url" />
+        </div>
+
+        <div class="field">
+          <label for="route">Route</label>
+          <select id="route" name="route">
+            <option value="/api/convert/webtopdf">Single web page to PDF</option>
+            <option value="/api/convert/webtopdfmerge">Merge multiple web pages</option>
+            <option value="/api/convert/convert-images-to-pdf">Image URLs to PDF</option>
+            <option value="/api/convert/convert-images-to-pdf-og">Image URLs to PDF OG</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="single-url">Single URL</label>
+          <input id="single-url" name="singleUrl" type="url" placeholder="https://example.com" />
+        </div>
+
+        <div class="field">
+          <label for="multi-urls">Multiple URLs</label>
+          <textarea id="multi-urls" name="multiUrls" placeholder="One URL per line for merge and image routes"></textarea>
+          <div class="hint">Use one URL per line for `webtopdfmerge`, `convert-images-to-pdf`, and `convert-images-to-pdf-og`.</div>
+        </div>
+
+        <div class="grid">
+          <div class="field">
+            <label for="scale">Scale %</label>
+            <input id="scale" name="scale" type="number" min="10" max="200" step="1" value="100" />
+          </div>
+          <div class="field">
+            <label for="margin-top">Top margin</label>
+            <input id="margin-top" name="marginTop" type="text" value="10mm" />
+          </div>
+          <div class="field">
+            <label for="margin-right">Right margin</label>
+            <input id="margin-right" name="marginRight" type="text" value="10mm" />
+          </div>
+          <div class="field">
+            <label for="margin-bottom">Bottom margin</label>
+            <input id="margin-bottom" name="marginBottom" type="text" value="10mm" />
+          </div>
+          <div class="field">
+            <label for="margin-left">Left margin</label>
+            <input id="margin-left" name="marginLeft" type="text" value="10mm" />
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="submit-btn" class="primary" type="submit">Run test</button>
+          <button id="reset-btn" class="secondary" type="button">Reset form</button>
+        </div>
+
+        <div id="status" class="status" aria-live="polite"></div>
+        <div id="response-meta" class="meta-card hidden"></div>
+      </form>
+    </section>
+
+    <section class="panel preview">
+      <div class="preview-header">
+        <div>
+          <div class="badge">Preview</div>
+          <p class="meta">The generated PDF will appear here after a successful request.</p>
+        </div>
+        <div class="actions">
+          <a id="open-btn" class="link-button secondary hidden" target="_blank" rel="noopener">Open PDF</a>
+          <a id="download-btn" class="link-button primary hidden" download="result.pdf">Download PDF</a>
+        </div>
+      </div>
+
+      <div id="empty-state" class="empty">
+        <div>
+          <h2>Ready to test</h2>
+          <p>Choose a route, add your URL or URLs, and run the request. If the API returns a base64 PDF, it will render here automatically.</p>
+        </div>
+      </div>
+
+      <iframe id="preview-frame" class="preview-frame hidden" title="PDF Preview"></iframe>
+    </section>
+  </div>
+
+  <script>
+    const form = document.getElementById("tester-form");
+    const routeField = document.getElementById("route");
+    const baseUrlField = document.getElementById("base-url");
+    const singleUrlField = document.getElementById("single-url");
+    const multiUrlsField = document.getElementById("multi-urls");
+    const statusEl = document.getElementById("status");
+    const responseMetaEl = document.getElementById("response-meta");
+    const submitBtn = document.getElementById("submit-btn");
+    const resetBtn = document.getElementById("reset-btn");
+    const previewFrame = document.getElementById("preview-frame");
+    const emptyState = document.getElementById("empty-state");
+    const downloadBtn = document.getElementById("download-btn");
+    const openBtn = document.getElementById("open-btn");
+
+    let currentPreviewUrl = null;
+
+    const routeModeMap = {
+      "/api/convert/webtopdf": "single",
+      "/api/convert/webtopdfmerge": "multi",
+      "/api/convert/convert-images-to-pdf": "multi",
+      "/api/convert/convert-images-to-pdf-og": "multi",
+    };
+
+    function getDefaultBaseUrl() {
+      const { protocol, hostname, port } = window.location;
+      return `${protocol}//${hostname}${port ? `:${port}` : ""}`;
+    }
+
+    function setStatus(message, type = "") {
+      statusEl.textContent = message;
+      statusEl.className = `status ${type}`.trim();
+    }
+
+    function parseUrls(text) {
+      return text
+        .split(/\r?\n/)
+        .map((item) => item.trim())
+        .filter(Boolean);
+    }
+
+    function updateFieldVisibility() {
+      const mode = routeModeMap[routeField.value];
+      const singleWrap = singleUrlField.closest(".field");
+      const multiWrap = multiUrlsField.closest(".field");
+
+      if (mode === "single") {
+        singleWrap.classList.remove("hidden");
+        multiWrap.classList.add("hidden");
+      } else {
+        singleWrap.classList.add("hidden");
+        multiWrap.classList.remove("hidden");
+      }
+    }
+
+    function normalizeResponse(json) {
+      if (json?.data?.Files?.length) {
+        return json.data.Files[0];
+      }
+
+      if (json?.Files?.length) {
+        return json.Files[0];
+      }
+
+      return null;
+    }
+
+    function clearPreview() {
+      if (currentPreviewUrl) {
+        URL.revokeObjectURL(currentPreviewUrl);
+        currentPreviewUrl = null;
+      }
+
+      previewFrame.removeAttribute("src");
+      previewFrame.classList.add("hidden");
+      emptyState.classList.remove("hidden");
+      downloadBtn.classList.add("hidden");
+      openBtn.classList.add("hidden");
+    }
+
+    function showPreview(file) {
+      const byteChars = atob(file.FileData);
+      const byteNumbers = new Array(byteChars.length);
+
+      for (let i = 0; i < byteChars.length; i += 1) {
+        byteNumbers[i] = byteChars.charCodeAt(i);
+      }
+
+      const blob = new Blob([new Uint8Array(byteNumbers)], { type: "application/pdf" });
+      currentPreviewUrl = URL.createObjectURL(blob);
+
+      previewFrame.src = currentPreviewUrl;
+      previewFrame.classList.remove("hidden");
+      emptyState.classList.add("hidden");
+
+      downloadBtn.href = currentPreviewUrl;
+      downloadBtn.download = file.FileName || "result.pdf";
+      downloadBtn.classList.remove("hidden");
+
+      openBtn.href = currentPreviewUrl;
+      openBtn.classList.remove("hidden");
+    }
+
+    function setMeta(file, route, endpoint) {
+      responseMetaEl.innerHTML = `
+        <strong>Endpoint:</strong> <code>${endpoint}</code><br />
+        <strong>Route type:</strong> ${route}<br />
+        <strong>File name:</strong> ${file.FileName || "result.pdf"}<br />
+        <strong>File size:</strong> ${file.FileSize || "Unknown"} bytes
+      `;
+      responseMetaEl.classList.remove("hidden");
+    }
+
+    function buildPayload() {
+      const route = routeField.value;
+      const mode = routeModeMap[route];
+      const scale = document.getElementById("scale").value.trim();
+      const marginTop = document.getElementById("margin-top").value.trim();
+      const marginRight = document.getElementById("margin-right").value.trim();
+      const marginBottom = document.getElementById("margin-bottom").value.trim();
+      const marginLeft = document.getElementById("margin-left").value.trim();
+
+      if (mode === "single") {
+        const url = singleUrlField.value.trim();
+        if (!url) {
+          throw new Error("Please enter a URL for the selected route.");
+        }
+
+        return {
+          url,
+          scale,
+          marginTop,
+          marginRight,
+          marginBottom,
+          marginLeft,
+        };
+      }
+
+      const urls = parseUrls(multiUrlsField.value);
+      if (!urls.length) {
+        throw new Error("Please enter one or more URLs for the selected route.");
+      }
+
+      if (route === "/api/convert/webtopdfmerge") {
+        return {
+          targetUrls: urls,
+          scale,
+          marginTop,
+          marginRight,
+          marginBottom,
+          marginLeft,
+        };
+      }
+
+      return { urls };
+    }
+
+    async function runTest(event) {
+      event.preventDefault();
+      clearPreview();
+      responseMetaEl.classList.add("hidden");
+
+      const endpoint = `${baseUrlField.value.replace(/\/$/, "")}${routeField.value}`;
+
+      let payload;
+      try {
+        payload = buildPayload();
+      } catch (error) {
+        setStatus(error.message, "error");
+        return;
+      }
+
+      setStatus("Calling API and waiting for PDF response...");
+      submitBtn.disabled = true;
+      resetBtn.disabled = true;
+
+      try {
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        const json = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(json.error || `Request failed with status ${response.status}`);
+        }
+
+        const file = normalizeResponse(json);
+        if (!file?.FileData) {
+          throw new Error("The API response did not include PDF file data.");
+        }
+
+        showPreview(file);
+        setMeta(file, routeField.options[routeField.selectedIndex].text, endpoint);
+        setStatus("PDF generated successfully.", "success");
+      } catch (error) {
+        setStatus(error.message || "Something went wrong while calling the API.", "error");
+      } finally {
+        submitBtn.disabled = false;
+        resetBtn.disabled = false;
+      }
+    }
+
+    function resetForm() {
+      form.reset();
+      baseUrlField.value = getDefaultBaseUrl();
+      document.getElementById("scale").value = "100";
+      document.getElementById("margin-top").value = "10mm";
+      document.getElementById("margin-right").value = "10mm";
+      document.getElementById("margin-bottom").value = "10mm";
+      document.getElementById("margin-left").value = "10mm";
+      clearPreview();
+      responseMetaEl.classList.add("hidden");
+      setStatus("");
+      updateFieldVisibility();
+    }
+
+    baseUrlField.value = getDefaultBaseUrl();
+    routeField.addEventListener("change", updateFieldVisibility);
+    form.addEventListener("submit", runTest);
+    resetBtn.addEventListener("click", resetForm);
+    updateFieldVisibility();
+  </script>
+</body>
+</html>

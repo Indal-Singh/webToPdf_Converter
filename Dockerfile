@@ -10,6 +10,9 @@ RUN apt-get update && \
     apt-get install -y \
       wget \
       ca-certificates \
+      unzip \
+      fontconfig \
+      gnupg \
       fonts-liberation \
       libasound2 \
       libatk1.0-0 \
@@ -33,11 +36,30 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
 # Verify installation
 RUN node -v && npm -v
 
+# Keep Docker build output clean by disabling npm's update notice
+RUN npm config set update-notifier false
+
 # Copy package.json and package-lock.json
 COPY package*.json ./
 
 # Install Node.js dependencies
 RUN npm install --legacy-peer-deps
+
+# Copy and install custom fonts system-wide
+COPY allfonts.zip /tmp/allfonts.zip
+RUN rm -rf /tmp/allfonts && \
+    mkdir -p /tmp/allfonts /usr/local/share/fonts/custom && \
+    unzip -q /tmp/allfonts.zip -d /tmp/allfonts && \
+    cd /tmp/allfonts/all_my_fonts && \
+    find . -type f \( \
+      -iname '*.ttf' -o \
+      -iname '*.otf' -o \
+      -iname '*.ttc' -o \
+      -iname '*.pfa' -o \
+      -iname '*.pfb' \
+    \) -exec cp --parents "{}" /usr/local/share/fonts/custom/ \; && \
+    fc-cache -f -v && \
+    rm -rf /tmp/allfonts /tmp/allfonts.zip
 
 # Copy the application source code
 COPY . .
@@ -45,8 +67,5 @@ COPY . .
 # Expose the port your app runs on
 EXPOSE 3002
 
-# Set environment variables for Xvfb
-ENV DISPLAY=:99
-
-# Start Xvfb at runtime and then run the app
-CMD ["sh", "-c", "Xvfb :99 -screen 0 1024x768x16 & xvfb-run -e /tmp/xvfb-errors.log node index.js"]
+# Start the API directly; Puppeteer is already running in headless mode
+CMD ["node", "index.js"]
